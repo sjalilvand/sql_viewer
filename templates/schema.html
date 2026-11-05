@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% block title %}ساختار دیتابیس — نمایشگر بکاپ MySQL{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <div class="crumbs"><a href="{{ url_for('index') }}">خانه</a><span>/</span><span>ساختار دیتابیس</span></div>
+    <h1>ساختار کامل دیتابیس</h1>
+    <div class="muted small">
+      محاسبه در {{ payload.build_seconds or 0 }} ثانیه — ارتباط‌ها از روی نام ستون‌ها کشف و با نمونه‌گیری از داده تأیید شده‌اند
+    </div>
+  </div>
+  <div class="head-actions">
+    <a class="btn" href="{{ url_for('schema_page', refresh=1) }}" title="محاسبه دوباره ساختار و ارتباط‌ها">به‌روزرسانی</a>
+  </div>
+</section>
+
+<section class="stats" aria-label="شاخص‌های ساختار">
+  <div class="stat"><div class="stat-num">{{ payload.kpi.tables|nf }}</div><div class="stat-label">جدول</div></div>
+  <div class="stat"><div class="stat-num">{{ payload.kpi.views|nf }}</div><div class="stat-label">نما (View)</div></div>
+  <div class="stat"><div class="stat-num">{{ payload.kpi.rows|nf }}</div><div class="stat-label">مجموع ردیف‌ها</div></div>
+  <div class="stat"><div class="stat-num">{{ payload.kpi.relations|nf }}</div><div class="stat-label">ارتباط کشف‌شده</div></div>
+  <div class="stat"><div class="stat-num">{{ payload.kpi.db_size|size }}</div><div class="stat-label">حجم دیتابیس</div></div>
+</section>
+
+<section class="dash-section">
+  <div class="chart-card wide">
+    <div class="chart-head">
+      <h2 class="chart-title">نمودار ارتباط جداول (ER)</h2>
+      <div class="er-toolbar">
+        <input id="erFilter" type="search" placeholder="فیلتر جدول‌ها…" autocomplete="off">
+        <button id="erZoomIn" class="btn small" type="button" title="بزرگ‌نمایی">+</button>
+        <button id="erZoomOut" class="btn small" type="button" title="کوچک‌نمایی">&minus;</button>
+        <button id="erReset" class="btn small" type="button" title="بازنشانی نما">⟲</button>
+      </div>
+    </div>
+    <div class="er-hint muted small">
+      کشیدن = جابه‌جایی &middot; کلید Ctrl + چرخ ماوس = زوم &middot; نگه‌داشتن ماوس روی جدول = نمایش ارتباط‌ها &middot; کلیک روی جدول = مشاهده داده‌ها
+      <span id="erCount" class="er-count"></span>
+    </div>
+    <div class="er-wrap" id="erWrap">
+      <svg id="erSvg" class="er-svg" preserveAspectRatio="xMidYMid meet" role="img"
+           aria-label="نمودار ارتباط جداول"></svg>
+    </div>
+    <div class="er-legend">
+      <span class="legend-row"><span class="legend-chip" style="background:#16a34a"></span> تأییدشده با داده</span>
+      <span class="legend-row"><span class="legend-chip" style="background:#2563eb"></span> نام ستون = نام جدول</span>
+      <span class="legend-row"><span class="legend-chip" style="background:#94a3b8"></span> تطابق تقریبی نام</span>
+      <span class="legend-row muted">اندازه نقطه شروع خط = جدول فرزند، نوک فلش = جدول والد</span>
+    </div>
+  </div>
+</section>
+
+<section class="dash-section">
+  <div class="chart-card wide">
+    <div class="chart-head">
+      <h2 class="chart-title">ارتباط بین جدول‌ها ({{ payload.relations|length }} مورد)</h2>
+      <div class="er-toolbar">
+        <select id="relConf" aria-label="فیلتر نوع ارتباط">
+          <option value="">همه ارتباط‌ها</option>
+          <option value="verified">تأییدشده</option>
+          <option value="high">نام دقیق</option>
+          <option value="med">تطابق تقریبی</option>
+          <option value="low">احتمالی</option>
+        </select>
+        <input id="relFilter" type="search" placeholder="جستجوی جدول/ستون…" autocomplete="off">
+      </div>
+    </div>
+    {% if payload.relations %}
+    <div class="table-wrap">
+      <table class="data-table" id="relTable">
+        <thead>
+          <tr><th>جدول فرزند</th><th>ستون</th><th></th><th>جدول والد</th><th>کلید والد</th><th>نوع کشف</th><th>تطابق داده</th></tr>
+        </thead>
+        <tbody>
+        {% for r in payload.relations %}
+          <tr data-conf="{{ r.confidence }}">
+            <td><a class="table-link" href="{{ url_for('table_page', name=r.child) }}">{{ r.child }}</a></td>
+            <td class="ltr-cell">{{ r.child_col }}</td>
+            <td class="muted rel-arrow">&larr;</td>
+            <td><a class="table-link" href="{{ url_for('table_page', name=r.parent) }}">{{ r.parent }}</a></td>
+            <td class="ltr-cell">{{ r.parent_col or '—' }}</td>
+            <td><span class="conf-badge conf-{{ r.confidence }}">{{ payload.conf_fa[r.confidence] }}</span></td>
+            <td class="muted">{% if r.ratio is not none %}{{ ((r.ratio * 100) | round(0) | int) }}٪{% else %}—{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">ارتباطی بین جدول‌ها کشف نشد. ستون‌های این بکاپ الگوی «نام‌Id» ندارند.</div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="dash-section">
+  <div class="chart-card wide">
+    <div class="chart-head">
+      <h2 class="chart-title">ساختار همه جدول‌ها ({{ payload.tables|length }} جدول)</h2>
+      <div class="er-toolbar">
+        <input id="structFilter" type="search" placeholder="فیلتر نام جدول…" autocomplete="off">
+      </div>
+    </div>
+    {% for t in payload.tables %}
+    <details class="ddl tbl-struct" data-struct="{{ t.name|lower }}">
+      <summary>
+        <span class="table-link">{{ t.name }}</span>
+        <span class="muted small struct-meta">
+          {{ t.rows|nf }} ردیف &middot; {{ t.cols|length }} ستون{% if t.degree %} &middot; {{ t.degree }} ارتباط{% endif %}
+        </span>
+      </summary>
+      {% if t.cols %}
+      <div class="table-wrap">
+        <table class="data-table struct-table">
+          <thead>
+            <tr><th>ستون</th><th>نوع MySQL</th><th>نوع SQLite</th><th>کلید</th><th>مقدار خالی</th><th>پیش‌فرض</th><th>ارتباط به</th></tr>
+          </thead>
+          <tbody>
+          {% for c in t.cols %}
+          {% set fk = t.fk.get(c.name) %}
+          <tr>
+            <td class="ltr-cell col-name">{{ c.name }}{% if c.pk %} <span class="pk-badge">PK</span>{% endif %}</td>
+            <td><span class="type-badge">{{ c.mtype or c.stype }}</span></td>
+            <td class="muted ltr-cell">{{ c.stype }}</td>
+            <td>{% if c.pk %}کلید اصلی{% elif c.ai %}خودافزا{% else %}—{% endif %}</td>
+            <td>{{ 'ممنوع' if c.notnull else 'مجاز' }}</td>
+            <td class="ltr-cell">{{ c.default if c.default is not none else '—' }}</td>
+            <td>{% if fk %}<a class="fk-link" href="{{ url_for('table_page', name=fk.table) }}" dir="ltr">{{ fk.table }}.{{ fk.col }}</a>{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty small">ستونی برای این جدول ثبت نشده است.</div>
+      {% endif %}
+      {% if t.ddl %}
+      <pre class="ddl-pre" dir="ltr">{{ t.ddl }}</pre>
+      {% endif %}
+    </details>
+    {% endfor %}
+  </div>
+</section>
+
+{% if payload.views %}
+<section class="dash-section">
+  <div class="chart-card wide">
+    <div class="chart-head"><h2 class="chart-title">نماها (View) — {{ payload.views|length }} مورد</h2></div>
+    {% for v in payload.views %}
+    <details class="ddl">
+      <summary><span class="table-link">{{ v.name }}</span></summary>
+      <pre class="ddl-pre" dir="ltr">{{ v.ddl }}</pre>
+    </details>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<script id="schema-data" type="application/json">{{ payload|tojson }}</script>
+<script src="{{ url_for('static', filename='jalali.js') }}"></script>
+<script src="{{ url_for('static', filename='schema.js') }}"></script>
+{% endblock %}

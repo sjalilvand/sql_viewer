@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}نمایشگر بکاپ MySQL{% endblock %}</title>
+<link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<nav class="topbar">
+  <div class="container nav-inner">
+    <a class="brand" href="{{ url_for('index') }}">
+      <span class="brand-badge">SQL</span>
+      <span class="brand-text">نمایشگر بکاپ MySQL</span>
+    </a>
+    <div class="nav-side">
+      {% block navside %}{% endblock %}
+      <a class="nav-link" href="{{ url_for('index') }}">جداول</a>
+      <a class="nav-link" href="{{ url_for('schema_page') }}">ساختار دیتابیس</a>
+      <a class="nav-link" href="{{ url_for('dashboard_page') }}">داشبورد</a>
+      <button id="themeBtn" class="icon-btn" title="تغییر حالت روشن/تاریک" aria-label="تغییر تم">&#9684;</button>
+    </div>
+  </div>
+</nav>
+<main class="container">
+{% block content %}{% endblock %}
+</main>
+<footer class="footer">
+  <div class="container">داده‌ها فقط به‌صورت محلی از فایل بکاپ خوانده می‌شوند — اجرا با Flask و SQLite</div>
+</footer>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

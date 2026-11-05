@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <h1>فهرست جداول</h1>
+    <div class="muted file-path" dir="ltr">{{ status.file or 'فایل بکاپ هنوز انتخاب نشده است' }}</div>
+  </div>
+</section>
+
+{% if nf_error %}
+<div class="alert warn">مسیر واردشده معتبر نیست یا فایل وجود ندارد. دوباره تلاش کنید.</div>
+{% endif %}
+
+{% if status.state == 'done' and status.auto %}
+<div class="alert ok">
+  بکاپ جدید به‌صورت خودکار استخراج و جایگزین شد:
+  <span dir="ltr">{{ status.file }}</span>
+</div>
+{% endif %}
+
+{% if status.state == 'no_file' %}
+<div class="card">
+  <h2>فایل بکاپ پیدا نشد</h2>
+  <p class="muted">مسیر کامل فایل بکاپ را وارد کنید. مثال:</p>
+  <p class="sample-path" dir="ltr">C:\Users\emdadadmin\Desktop\rose\app2_backup_202611031659.sql</p>
+  <form method="post" action="{{ url_for('setup') }}" class="row-form">
+    <input type="text" name="sqlfile" dir="ltr" placeholder="C:\...\app2_backup_202611031659.sql" required>
+    <button class="btn primary" type="submit">شروع استخراج</button>
+  </form>
+  <p class="muted small">یا هنگام اجرای برنامه مسیر را به‌صورت پارامتر بدهید:
+    <code dir="ltr">python app.py --file "مسیر فایل"</code></p>
+</div>
+{% endif %}
+
+{% if status.state == 'importing' %}
+<div class="card" id="progressCard">
+  <h2>در حال استخراج داده‌ها…</h2>
+  <p class="muted">برای فایل‌های حجیم این مرحله ممکن است چند دقیقه طول بکشد. صفحه را نبندید؛ پس از پایان، همین‌جا به‌روزرسانی می‌شود.</p>
+  <div class="progress"><div class="progress-bar" id="pbar" style="width: {{ status.percent or 0 }}%"></div></div>
+  <div class="progress-row">
+    <span class="progress-pct" id="ptext">{{ '%.1f'|format(status.percent or 0) }}٪</span>
+    <span class="muted" id="psub">در حال آماده‌سازی…</span>
+  </div>
+</div>
+{% endif %}
+
+{% if status.state == 'error' %}
+<div class="alert danger">
+  <strong>خطا در استخراج:</strong> {{ status.error or 'خطای نامشخص' }}
+  <form method="post" action="{{ url_for('restart_import') }}" class="inline-form">
+    <button class="btn" type="submit">تلاش دوباره</button>
+  </form>
+</div>
+{% if status.errors %}
+<details class="ddl">
+  <summary>جزئیات خطاها ({{ status.errors|length }} مورد)</summary>
+  <pre dir="ltr">{{ status.errors|join('\n') }}</pre>
+</details>
+{% endif %}
+{% endif %}
+
+{% if status.state == 'done' %}
+<div class="stats">
+  <div class="stat"><div class="stat-num">{{ table_items|length }}</div><div class="stat-label">جدول</div></div>
+  <div class="stat"><div class="stat-num">{{ total_rows|nf }}</div><div class="stat-label">مجموع ردیف‌ها</div></div>
+  <div class="stat"><div class="stat-num">{{ status.elapsed or 0 }} ثانیه</div><div class="stat-label">زمان استخراج</div></div>
+  <div class="stat"><div class="stat-num">{{ (status.total_bytes or 0)|size }}</div><div class="stat-label">حجم فایل بکاپ</div></div>
+</div>
+{% endif %}
+
+{% if table_items %}
+<div class="card">
+  <div class="card-head">
+    <h2>جداول</h2>
+    <input id="tableFilter" type="search" placeholder="فیلتر جداول…" autocomplete="off">
+  </div>
+  <div class="table-wrap">
+  <table class="list-table">
+    <thead><tr><th>نام جدول</th><th>ستون‌ها</th><th>ردیف‌ها</th><th>عملیات</th></tr></thead>
+    <tbody>
+    {% for t in table_items %}
+      <tr data-table-row="{{ t.name }}">
+        <td><a class="table-link" href="{{ url_for('table_page', name=t.name) }}">{{ t.name }}</a></td>
+        <td>{{ t.cols|length }}</td>
+        <td>{{ t.rows|nf }}</td>
+        <td class="actions">
+          <a class="btn small" href="{{ url_for('table_page', name=t.name) }}">مشاهده</a>
+          <a class="btn small ghost" href="{{ url_for('table_csv', name=t.name) }}">CSV</a>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% elif status.state == 'done' %}
+<div class="empty">هیچ جدولی در بکاپ پیدا نشد.</div>
+{% endif %}
+
+{% if views %}
+<div class="card">
+  <div class="card-head"><h2>نماها (View)</h2></div>
+  {% for v in views %}
+  <details class="ddl">
+    <summary>{{ v.name }}</summary>
+    <pre dir="ltr">{{ v.ddl }}</pre>
+  </details>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if bk_items %}
+<div class="card">
+  <div class="card-head"><h2>فایل‌های بکاپ</h2></div>
+  <p class="muted small">هر فایل بکاپ جدید را در پوشه
+    <code dir="ltr">sql_viewer\backups</code> بگذارید؛ تا ۲۰ ثانیه بعد خودکار کشف و
+    استخراج می‌شود و همه صفحات (جداول، ساختار، داشبورد) به‌روز می‌شوند.</p>
+  <div class="table-wrap">
+  <table class="list-table">
+    <thead><tr><th>فایل</th><th>حجم</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+    <tbody>
+    {% for b in bk_items %}
+      <tr>
+        <td dir="ltr" class="ltr-cell">{{ b.name }}</td>
+        <td>{{ b.size|size }}</td>
+        <td>{% if b.seen %}<span class="muted">استخراج‌شده</span>{% else %}<span class="conf-badge conf-high">جدید</span>{% endif %}</td>
+        <td class="actions">
+          <form method="post" action="{{ url_for('import_file') }}" class="inline-form">
+            <input type="hidden" name="name" value="{{ b.name }}">
+            <input type="hidden" name="size" value="{{ b.size }}">
+            <button class="btn small {{ 'primary' if not b.seen else '' }}" type="submit"
+                    {% if importing %}disabled title="استخراج دیگری در جریان است"{% endif %}>
+              استخراج
+            </button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

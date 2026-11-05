@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>داشبورد تحلیلی — نمایشگر بکاپ MySQL</title>
+{% if inline %}
+{{ css_html|safe }}
+{% else %}
+<link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% endif %}
+</head>
+<body>
+<nav class="topbar">
+  <div class="container nav-inner">
+    <a class="brand" href="{{ url_for('index') if not inline else '#' }}">
+      <span class="brand-badge">SQL</span>
+      <span class="brand-text">داشبورد تحلیلی بکاپ</span>
+    </a>
+    <div class="nav-side">
+      {% if live %}
+      <a class="nav-link" href="{{ url_for('index') }}">فهرست جداول</a>
+      <a class="nav-link" href="{{ url_for('dashboard_page', refresh=1) }}" title="محاسبه دوباره همه آمارها">به‌روزرسانی</a>
+      <a class="nav-link" href="{{ url_for('export_dashboard') }}" title="ساخت فایل HTML مستقل">نسخه استاتیک</a>
+      {% endif %}
+      <button id="themeBtn" class="icon-btn" title="تغییر حالت روشن/تاریک" aria-label="تغییر تم">&#9684;</button>
+    </div>
+  </div>
+</nav>
+
+<main class="container">
+  <section class="page-head">
+    <div>
+      <h1>داشبورد تحلیلی</h1>
+      <div class="muted small">
+        محاسبه‌شده در {{ payload.elapsed or 0 }} ثانیه — آخرین به‌روزرسانی:
+        <span dir="ltr">{{ payload.generated_at }}</span>
+        {% if live %} (کش ۵ دقیقه‌ای){% endif %}
+      </div>
+    </div>
+  </section>
+
+  {% if not payload.available %}
+  <div class="alert warn">
+    داده‌ای برای داشبورد پیدا نشد. ابتدا استخراج بکاپ تا پایان برسد یا جدول‌های
+    اصلی (ApiReports، Users، Events، …) در بکاپ باشند.
+  </div>
+  {% else %}
+  <section id="kpis" class="kpi-grid" aria-label="شاخص‌های کلیدی"></section>
+  <div id="dash-root"></div>
+  {% endif %}
+</main>
+
+<footer class="footer">
+  <div class="container">همه آمارها فقط از فایل بکاپ محلی محاسبه می‌شوند — Flask و SQLite</div>
+</footer>
+
+<script id="dash-data" type="application/json">{{ payload|tojson }}</script>
+{% if inline %}
+{{ js_html|safe }}
+{% else %}
+<script src="{{ url_for('static', filename='jalali.js') }}"></script>
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+{% endif %}
+</body>
+</html>

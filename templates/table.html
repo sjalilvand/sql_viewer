@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}{{ meta.name }} — نمایشگر بکاپ MySQL{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <div class="crumbs"><a href="{{ url_for('index') }}">خانه</a><span>/</span><span>{{ meta.name }}</span></div>
+    <h1>{{ meta.name }}</h1>
+    <div class="muted">{{ total|nf }} ردیف &middot; {{ meta.cols|length }} ستون
+      {% if q %} &middot; نتیجه جستجو برای «{{ q }}»{% endif %}
+    </div>
+  </div>
+  <div class="head-actions">
+    <a class="btn" href="{{ url_for('schema_page') }}" title="همه جدول‌ها و ارتباط‌ها">ساختار دیتابیس</a>
+    <a class="btn" href="{{ url_for('table_csv', name=meta.name, q=q or none) }}">خروجی CSV</a>
+  </div>
+</section>
+
+<details class="ddl" open>
+  <summary>ساختار جدول — {{ meta.cols|length }} ستون</summary>
+  <div class="table-wrap">
+  <table class="data-table struct-table">
+    <thead>
+      <tr><th>ستون</th><th>نوع MySQL</th><th>نوع SQLite</th><th>کلید</th><th>مقدار خالی</th><th>پیش‌فرض</th><th>ارتباط به</th></tr>
+    </thead>
+    <tbody>
+    {% for c in meta.cols %}
+    {% set fk = fk_map.get(c.name) %}
+    <tr>
+      <td class="ltr-cell col-name">{{ c.name }}{% if c.pk %} <span class="pk-badge">PK</span>{% endif %}</td>
+      <td><span class="type-badge">{{ c.mtype or c.stype }}</span></td>
+      <td class="muted ltr-cell">{{ c.stype }}</td>
+      <td>{% if c.pk %}کلید اصلی{% elif c.ai %}خودافزا{% else %}—{% endif %}</td>
+      <td>{{ 'ممنوع' if c.notnull else 'مجاز' }}</td>
+      <td class="ltr-cell">{{ c.default if c.default is not none else '—' }}</td>
+      <td>{% if fk %}<a class="fk-link" href="{{ url_for('table_page', name=fk.table) }}" dir="ltr">{{ fk.table }}.{{ fk.col }}</a>{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</details>
+
+{% if meta.ddl %}
+<details class="ddl">
+  <summary>دستور ساخت جدول (CREATE TABLE)</summary>
+  <pre dir="ltr">{{ meta.ddl }}</pre>
+</details>
+{% endif %}
+
+<form class="filters" method="get">
+  <input type="search" name="q" value="{{ q }}" placeholder="جستجو در همه ستون‌ها…" dir="auto" autocomplete="off">
+  <select name="per_page" aria-label="تعداد ردیف در صفحه">
+    {% for n in [25, 50, 100, 200] %}
+    <option value="{{ n }}" {% if n == per_page %}selected{% endif %}>{{ n }} ردیف در صفحه</option>
+    {% endfor %}
+  </select>
+  <button class="btn primary" type="submit">اعمال</button>
+  {% if q or sort %}<a class="btn ghost" href="{{ url_for('table_page', name=meta.name) }}">پاک‌سازی فیلترها</a>{% endif %}
+</form>
+
+{% if rows %}
+<div class="table-wrap card-flat">
+<table class="data-table">
+  <thead>
+    <tr>
+      <th class="rownum">#</th>
+      {% for c in meta.cols %}
+      <th>
+        <a class="th-sort" href="{{ sort_url(c.name) }}" title="مرتب‌سازی بر اساس {{ c.name }}">
+          {{ c.name }}
+          {% if sort == c.name %}<span class="arrow">{{ '▼' if sdir == 'DESC' else '▲' }}</span>{% endif %}
+        </a>
+        <span class="type-badge">{{ c.mtype or c.stype }}</span>
+        {% if c.pk %}<span class="pk-badge" title="کلید اصلی">PK</span>{% endif %}
+      </th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td class="rownum">{{ r.n }}</td>
+      {% for cell in r.cells %}
+      <td>{% if cell.t == 'null' %}<span class="null">NULL</span>{% elif cell.t == 'blob' %}<code dir="ltr">{{ cell.v }}</code>{% else %}{{ cell.v }}{% endif %}</td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<nav class="pagination" aria-label="صفحه‌بندی">
+  {% if page > 1 %}
+  <a class="page-btn" href="{{ url_for('table_page', name=meta.name, page=1, per_page=per_page, q=q or none, sort=sort or none, dir=sdir.lower()) }}">&laquo; اول</a>
+  <a class="page-btn" href="{{ url_for('table_page', name=meta.name, page=page-1, per_page=per_page, q=q or none, sort=sort or none, dir=sdir.lower()) }}">قبلی</a>
+  {% endif %}
+  {% for it in pitems %}
+    {% if it.gap %}<span class="page-gap">&hellip;</span>
+    {% elif it.active %}<span class="page-btn current">{{ it.n }}</span>
+    {% else %}<a class="page-btn" href="{{ url_for('table_page', name=meta.name, page=it.n, per_page=per_page, q=q or none, sort=sort or none, dir=sdir.lower()) }}">{{ it.n }}</a>
+    {% endif %}
+  {% endfor %}
+  {% if page < pages %}
+  <a class="page-btn" href="{{ url_for('table_page', name=meta.name, page=page+1, per_page=per_page, q=q or none, sort=sort or none, dir=sdir.lower()) }}">بعدی</a>
+  <a class="page-btn" href="{{ url_for('table_page', name=meta.name, page=pages, per_page=per_page, q=q or none, sort=sort or none, dir=sdir.lower()) }}">آخر &raquo;</a>
+  {% endif %}
+</nav>
+<div class="muted page-info">صفحه {{ page }} از {{ pages }}</div>
+
+{% else %}
+<div class="empty">
+  {% if q %}ردیفی برای جستجوی «{{ q }}» یافت نشد.{% else %}این جدول خالی است.{% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}خطای {{ code }}{% endblock %}
+{% block content %}
+<div class="empty big">
+  <h1>{{ code }}</h1>
+  <p>{{ msg }}</p>
+  <a class="btn primary" href="{{ url_for('index') }}">بازگشت به خانه</a>
+</div>
+{% endblock %}

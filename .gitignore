@@ -1,0 +1,24 @@
+# --- فایل‌های بکاپ واقعی هرگز به گیت نباید بروند (حجم بالا و داده شخصی) ---
+/*.sql
+*.sql.gz
+*.sql.zip
+!test/*.sql
+
+# --- داده‌های محلی ساخته‌شده در اجرا ---
+viewer_data/
+backups/
+backup/
+export_html/
+export/
+
+# --- پایتون ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# --- سیستم‌عامل ---
+Thumbs.db
+Desktop.ini
+.DS_Store
