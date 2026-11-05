@@ -22,3 +22,8 @@ venv/
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# --- خروجی اسکریپت استخراج ساختار ---
+db_structure_out/
+db_structure.zip
+test/big_dump.sql
